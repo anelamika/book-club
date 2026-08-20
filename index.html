@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Книжный клуб — выбор книги</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="./vendor/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --ink: #14212b;
+      --ink-soft: #2a3a47;
+      --paper: #e8eef2;
+      --paper-bright: #f4f7f9;
+      --mist: #c5d4de;
+      --accent: #c45c26;
+      --accent-deep: #9a3f12;
+      --teal: #1a6b6b;
+      --teal-soft: #2a8f8f;
+      --line: rgba(20, 33, 43, 0.12);
+      --shadow: 0 18px 50px rgba(20, 33, 43, 0.12);
+      --radius: 4px;
+      --step-gap: 4.5rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Outfit", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(42, 143, 143, 0.18), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 20%, rgba(196, 92, 38, 0.12), transparent 50%),
+        linear-gradient(165deg, #d6e2ea 0%, var(--paper) 40%, #dce6ec 100%);
+      background-attachment: fixed;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.35;
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(20, 33, 43, 0.015) 2px,
+          rgba(20, 33, 43, 0.015) 3px
+        );
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: min(1080px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2.5rem 0 5rem;
+    }
+
+    /* —— Brand intro —— */
+    .brand {
+      margin-bottom: 3rem;
+      animation: rise 0.8s ease both;
+    }
+
+    .brand__mark {
+      display: block;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(2.8rem, 8vw, 4.6rem);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin: 0 0 0.75rem;
+    }
+
+    .brand__mark em {
+      font-style: italic;
+      color: var(--teal);
+    }
+
+    .brand__lead {
+      margin: 0;
+      max-width: 34rem;
+      font-weight: 300;
+      font-size: 1.05rem;
+      line-height: 1.55;
+      color: var(--ink-soft);
+    }
+
+    /* —— Steps —— */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: var(--step-gap);
+    }
+
+    .step {
+      opacity: 0;
+      transform: translateY(18px);
+      animation: rise 0.7s ease both;
+    }
+
+    .step:nth-child(1) { animation-delay: 0.08s; }
+    .step:nth-child(2) { animation-delay: 0.16s; }
+    .step:nth-child(3) { animation-delay: 0.24s; }
+    .step:nth-child(4) { animation-delay: 0.32s; }
+
+    .step__head {
+      display: flex;
+      align-items: baseline;
+      gap: 0.85rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .step__num {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 1.35rem;
+      color: var(--accent);
+      min-width: 1.6rem;
+    }
+
+    .step__title {
+      margin: 0;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(1.55rem, 3.5vw, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+
+    .step__hint {
+      margin: 0 0 1.25rem;
+      color: var(--ink-soft);
+      font-weight: 300;
+      font-size: 0.98rem;
+      line-height: 1.5;
+      max-width: 42rem;
+    }
+
+    .step__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      padding: 0.8rem 1.35rem;
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: var(--paper-bright);
+      transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--ink-soft);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(20, 33, 43, 0.18);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .btn--accent {
+      background: var(--accent);
+    }
+
+    .btn--accent:hover:not(:disabled) {
+      background: var(--accent-deep);
+    }
+
+    .btn--teal {
+      background: var(--teal);
+    }
+
+    .btn--teal:hover:not(:disabled) {
+      background: var(--teal-soft);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .btn--ghost:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.45);
+      box-shadow: none;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .panel {
+      background: rgba(244, 247, 249, 0.72);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 0;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .panel[hidden],
+    .pick[hidden],
+    .countdown[hidden],
+    .empty[hidden] {
+      display: none !important;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      max-height: min(52vh, 520px);
+    }
+
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      min-width: 480px;
+    }
+
+    table.data th,
+    table.data td {
+      padding: 0.7rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    table.data th {
+      position: sticky;
+      top: 0;
+      background: #eef3f6;
+      font-weight: 550;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-soft);
+      z-index: 1;
+    }
+
+    table.data tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    table.data tbody tr:hover {
+      background: rgba(26, 107, 107, 0.06);
+    }
+
+    table.data td:first-child,
+    table.data th:first-child {
+      white-space: nowrap;
+      color: var(--ink-soft);
+      width: 3rem;
+    }
+
+    table.data.pivot {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 100%;
+    }
+
+    table.data.pivot col {
+      width: auto;
+    }
+
+    table.data.pivot th,
+    table.data.pivot td,
+    table.data.pivot th:first-child,
+    table.data.pivot td:first-child {
+      width: auto;
+      min-width: 0;
+      word-break: break-word;
+      white-space: normal;
+      color: inherit;
+      text-align: left;
+    }
+
+    table.data.pivot .dup {
+      color: var(--accent-deep);
+      font-style: italic;
+    }
+
+    table.data.pivot .dup::after {
+      content: " · дубль";
+      font-size: 0.72rem;
+      opacity: 0.7;
+      font-style: normal;
+      margin-left: 0.25rem;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.4);
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+
+    .empty {
+      padding: 1.5rem 1rem;
+      color: var(--ink-soft);
+      font-weight: 300;
+      font-style: italic;
+    }
+
+    /* —— Countdown —— */
+    .countdown {
+      position: relative;
+      margin-top: 0.25rem;
+      min-height: 16rem;
+      padding: clamp(1.75rem, 4vw, 2.75rem);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(196, 92, 38, 0.16), transparent 55%),
+        linear-gradient(165deg, #eef4f7, var(--paper-bright));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .countdown__caption {
+      margin: 0 0 0.35rem;
+      font-size: 0.78rem;
+      font-weight: 550;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .countdown__number {
+      margin: 0;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(5.5rem, 18vw, 8.5rem);
+      line-height: 0.9;
+      color: var(--accent);
+      animation: countPop 0.55s cubic-bezier(0.22, 1.2, 0.36, 1);
+    }
+
+    .countdown__spin {
+      margin: 1.25rem 0 0;
+      min-height: 1.5rem;
+      max-width: 22rem;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(1.05rem, 3vw, 1.35rem);
+      font-style: italic;
+      color: var(--ink-soft);
+      opacity: 0.85;
+      transition: opacity 0.12s ease;
+    }
+
+    .countdown__spin.is-blur {
+      filter: blur(1.5px);
+      opacity: 0.55;
+    }
+
+    .countdown.is-go .countdown__number {
+      color: var(--teal);
+      font-size: clamp(3.2rem, 10vw, 4.5rem);
+    }
+
+    /* —— Pick reveal —— */
+    .pick {
+      position: relative;
+      margin-top: 0.25rem;
+      padding: clamp(1.75rem, 4vw, 2.75rem);
+      background:
+        linear-gradient(135deg, rgba(26, 107, 107, 0.12), transparent 40%),
+        linear-gradient(225deg, rgba(196, 92, 38, 0.1), transparent 45%),
+        var(--paper-bright);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .pick::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      background: linear-gradient(180deg, var(--teal), var(--accent));
+    }
+
+    .pick.is-animating {
+      animation: pickPulse 0.75s ease;
+    }
+
+    .pick.is-revealing .pick__result {
+      animation: revealUp 0.7s ease both;
+    }
+
+    .pick__label {
+      margin: 0 0 0.6rem;
+      font-size: 0.75rem;
+      font-weight: 550;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+    }
+
+    .pick__title {
+      margin: 0 0 1.35rem;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(1.9rem, 5vw, 2.85rem);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      max-width: 18ch;
+    }
+
+    .pick__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1.1rem 1.5rem;
+    }
+
+    .pick__field dt {
+      margin: 0 0 0.2rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .pick__field dd {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 500;
+    }
+
+    .status {
+      flex-basis: 100%;
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--accent-deep);
+    }
+
+    .status:empty {
+      display: none;
+    }
+
+    .connector {
+      height: 0;
+      margin: calc(var(--step-gap) / -2) 0;
+      border: none;
+      border-left: 1px dashed rgba(20, 33, 43, 0.22);
+      width: 0;
+      margin-left: 0.55rem;
+      align-self: flex-start;
+      height: calc(var(--step-gap) / 2);
+      display: none;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pickPulse {
+      0% {
+        transform: scale(0.985);
+        filter: brightness(1.05);
+      }
+      40% {
+        transform: scale(1.01);
+      }
+      100% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+    }
+
+    @keyframes countPop {
+      0% {
+        opacity: 0;
+        transform: scale(0.45);
+      }
+      60% {
+        opacity: 1;
+        transform: scale(1.08);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes revealUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        width: calc(100% - 1.25rem);
+        padding-top: 1.5rem;
+      }
+
+      .btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      .step__actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <h1 class="brand__mark">Книжный <em>клуб</em></h1>
+      <p class="brand__lead">
+        Загрузите список книг, выровняйте шансы по авторам предложений,
+        перемешайте и выберите случайную книгу для следующей встречи.
+      </p>
+    </header>
+
+    <div class="pipeline">
+      <!-- Step 1 -->
+      <section class="step" id="step-upload">
+        <div class="step__head">
+          <span class="step__num">01</span>
+          <h2 class="step__title">Загрузка таблицы</h2>
+        </div>
+        <p class="step__hint">
+          Форматы: CSV, XLS или XLSX. Колонки: №, Название, Автор, Жанр, Сложность, Кто добавил книгу (имя).
+        </p>
+        <div class="step__actions">
+          <input type="file" id="file-input" class="file-input" accept=".xlsx,.xls,.csv" />
+          <button type="button" class="btn" id="btn-upload">Загрузить</button>
+          <p class="status" id="upload-status" aria-live="polite"></p>
+        </div>
+        <div class="panel" id="source-panel" hidden>
+          <div class="table-scroll">
+            <table class="data" id="source-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="meta-row" id="source-meta"></div>
+        </div>
+        <p class="empty" id="source-empty">Таблица появится здесь после загрузки файла.</p>
+      </section>
+
+      <!-- Step 2 -->
+      <section class="step" id="step-pivot">
+        <div class="step__head">
+          <span class="step__num">02</span>
+          <h2 class="step__title">Выравнивание по людям</h2>
+        </div>
+        <p class="step__hint">
+          Столбцы — по тем, кто добавил книгу. В коротких столбцах книги дублируются,
+          пока длина не сравняется с самым длинным.
+        </p>
+        <div class="step__actions">
+          <button type="button" class="btn btn--teal" id="btn-pivot" disabled>Выравнять</button>
+        </div>
+        <div class="panel" id="pivot-panel" hidden>
+          <div class="table-scroll">
+            <table class="data pivot" id="pivot-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="meta-row" id="pivot-meta"></div>
+        </div>
+        <p class="empty" id="pivot-empty">Сначала загрузите исходную таблицу.</p>
+      </section>
+
+      <!-- Step 3 -->
+      <section class="step" id="step-shuffle">
+        <div class="step__head">
+          <span class="step__num">03</span>
+          <h2 class="step__title">Перемешать</h2>
+        </div>
+        <p class="step__hint">
+          Все ячейки предыдущей таблицы собираются в один список и перемешиваются в случайном порядке.
+        </p>
+        <div class="step__actions">
+          <button type="button" class="btn btn--teal" id="btn-shuffle" disabled>Перемешать</button>
+        </div>
+        <div class="panel" id="shuffle-panel" hidden>
+          <div class="table-scroll">
+            <table class="data" id="shuffle-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="meta-row" id="shuffle-meta"></div>
+        </div>
+        <p class="empty" id="shuffle-empty">Список появится после выравнивания и перемешивания.</p>
+      </section>
+
+      <!-- Step 4 -->
+      <section class="step" id="step-pick">
+        <div class="step__head">
+          <span class="step__num">04</span>
+          <h2 class="step__title">Выбор книги</h2>
+        </div>
+        <p class="step__hint">
+          Случайная книга из итогового списка.
+        </p>
+        <div class="step__actions">
+          <button type="button" class="btn btn--accent" id="btn-pick" disabled>Выбрать случайную книгу</button>
+        </div>
+        <div class="countdown" id="countdown" hidden aria-live="polite">
+          <p class="countdown__caption" id="countdown-caption">Выбираем книгу</p>
+          <p class="countdown__number" id="countdown-number">3</p>
+          <p class="countdown__spin" id="countdown-spin"></p>
+        </div>
+        <article class="pick" id="pick-card" hidden>
+          <div class="pick__result">
+            <p class="pick__label">Выбрана книга</p>
+            <h3 class="pick__title" id="pick-title"></h3>
+            <dl class="pick__grid">
+              <div class="pick__field">
+                <dt>Автор</dt>
+                <dd id="pick-author"></dd>
+              </div>
+              <div class="pick__field">
+                <dt>Жанр</dt>
+                <dd id="pick-genre"></dd>
+              </div>
+              <div class="pick__field">
+                <dt>Сложность</dt>
+                <dd id="pick-difficulty"></dd>
+              </div>
+              <div class="pick__field">
+                <dt>Кто добавил</dt>
+                <dd id="pick-added-by"></dd>
+              </div>
+            </dl>
+          </div>
+        </article>
+        <p class="empty" id="pick-empty">Сначала получите итоговый список.</p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const COL = {
+        num: ["№", "номер", "no", "n", "#"],
+        title: ["название", "книга", "title", "name"],
+        author: ["автор", "author"],
+        genre: ["жанр", "genre"],
+        difficulty: ["сложность", "difficulty", "уровень"],
+        addedBy: [
+          "кто добавил книгу (имя)",
+          "кто добавил книгу",
+          "кто добавил",
+          "добавил",
+          "имя",
+          "added by",
+          "addedby",
+        ],
+      };
+
+      /** @type {Array<{num:string,title:string,author:string,genre:string,difficulty:string,addedBy:string}>} */
+      let books = [];
+      /** @type {{ people: string[], rows: Array<Array<{title:string,addedBy:string,author:string,genre:string,difficulty:string,isDuplicate:boolean}>> }} */
+      let pivot = null;
+      /** @type {Array<{title:string,addedBy:string,author:string,genre:string,difficulty:string}>} */
+      let shuffled = [];
+
+      const els = {
+        fileInput: document.getElementById("file-input"),
+        btnUpload: document.getElementById("btn-upload"),
+        btnPivot: document.getElementById("btn-pivot"),
+        btnShuffle: document.getElementById("btn-shuffle"),
+        btnPick: document.getElementById("btn-pick"),
+        uploadStatus: document.getElementById("upload-status"),
+        sourcePanel: document.getElementById("source-panel"),
+        sourceEmpty: document.getElementById("source-empty"),
+        sourceTable: document.getElementById("source-table"),
+        sourceMeta: document.getElementById("source-meta"),
+        pivotPanel: document.getElementById("pivot-panel"),
+        pivotEmpty: document.getElementById("pivot-empty"),
+        pivotTable: document.getElementById("pivot-table"),
+        pivotMeta: document.getElementById("pivot-meta"),
+        shufflePanel: document.getElementById("shuffle-panel"),
+        shuffleEmpty: document.getElementById("shuffle-empty"),
+        shuffleTable: document.getElementById("shuffle-table"),
+        shuffleMeta: document.getElementById("shuffle-meta"),
+        pickCard: document.getElementById("pick-card"),
+        pickEmpty: document.getElementById("pick-empty"),
+        pickTitle: document.getElementById("pick-title"),
+        pickAuthor: document.getElementById("pick-author"),
+        pickGenre: document.getElementById("pick-genre"),
+        pickDifficulty: document.getElementById("pick-difficulty"),
+        pickAddedBy: document.getElementById("pick-added-by"),
+        countdown: document.getElementById("countdown"),
+        countdownCaption: document.getElementById("countdown-caption"),
+        countdownNumber: document.getElementById("countdown-number"),
+        countdownSpin: document.getElementById("countdown-spin"),
+      };
+
+      let pickRunning = false;
+      let pickTimers = [];
+      let spinTimer = null;
+      let lastPickedKey = "";
+
+      function norm(value) {
+        return String(value ?? "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, " ");
+      }
+
+      function findColumnIndex(headers, aliases) {
+        const normalized = headers.map(norm);
+        for (const alias of aliases) {
+          const i = normalized.indexOf(alias);
+          if (i !== -1) return i;
+        }
+        for (let i = 0; i < normalized.length; i++) {
+          for (const alias of aliases) {
+            if (normalized[i].includes(alias)) return i;
+          }
+        }
+        return -1;
+      }
+
+      function cell(row, index) {
+        if (index < 0 || index >= row.length) return "";
+        const v = row[index];
+        if (v == null) return "";
+        return String(v).trim();
+      }
+
+      function parseSheet(workbook) {
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, {
+          header: 1,
+          defval: "",
+          raw: false,
+        });
+
+        if (!rows.length) throw new Error("Файл пуст.");
+
+        let headerRowIndex = 0;
+        while (
+          headerRowIndex < rows.length &&
+          rows[headerRowIndex].every((c) => String(c ?? "").trim() === "")
+        ) {
+          headerRowIndex++;
+        }
+        if (headerRowIndex >= rows.length) throw new Error("Не найдены заголовки.");
+
+        const headers = rows[headerRowIndex].map((h) => String(h ?? "").trim());
+        const idx = {
+          title: findColumnIndex(headers, COL.title),
+          author: findColumnIndex(headers, COL.author),
+          genre: findColumnIndex(headers, COL.genre),
+          difficulty: findColumnIndex(headers, COL.difficulty),
+          addedBy: findColumnIndex(headers, COL.addedBy),
+          num: findColumnIndex(headers, COL.num),
+        };
+
+        if (idx.title < 0) throw new Error('Не найдена колонка «Название».');
+        if (idx.addedBy < 0) {
+          throw new Error('Не найдена колонка «Кто добавил книгу (имя)».');
+        }
+
+        const parsed = [];
+        for (let r = headerRowIndex + 1; r < rows.length; r++) {
+          const row = rows[r] || [];
+          const title = cell(row, idx.title);
+          const addedBy = cell(row, idx.addedBy);
+          if (!title && !addedBy) continue;
+          if (!title) continue;
+          parsed.push({
+            num: cell(row, idx.num) || String(parsed.length + 1),
+            title,
+            author: cell(row, idx.author),
+            genre: cell(row, idx.genre),
+            difficulty: cell(row, idx.difficulty),
+            addedBy: addedBy || "Без имени",
+          });
+        }
+
+        if (!parsed.length) throw new Error("В таблице нет книг.");
+        return parsed;
+      }
+
+      function renderTable(tableEl, headers, rows, options) {
+        const equalColumns = options && options.equalColumns;
+        let colgroup = tableEl.querySelector("colgroup");
+        if (equalColumns) {
+          if (!colgroup) {
+            colgroup = document.createElement("colgroup");
+            tableEl.insertBefore(colgroup, tableEl.firstChild);
+          }
+          const width = `${(100 / Math.max(headers.length, 1)).toFixed(4)}%`;
+          colgroup.innerHTML = headers.map(() => `<col style="width:${width}" />`).join("");
+        } else if (colgroup) {
+          colgroup.remove();
+        }
+
+        const thead = tableEl.querySelector("thead");
+        const tbody = tableEl.querySelector("tbody");
+        thead.innerHTML =
+          "<tr>" + headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("") + "</tr>";
+        tbody.innerHTML = rows
+          .map(
+            (row) =>
+              "<tr>" +
+              row
+                .map((cellValue) => {
+                  if (cellValue && typeof cellValue === "object" && cellValue.html) {
+                    return `<td class="${cellValue.className || ""}">${cellValue.html}</td>`;
+                  }
+                  return `<td>${escapeHtml(String(cellValue ?? ""))}</td>`;
+                })
+                .join("") +
+              "</tr>"
+          )
+          .join("");
+      }
+
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function resetDownstreamFrom(step) {
+        if (step <= 2) {
+          pivot = null;
+          els.pivotPanel.hidden = true;
+          els.pivotEmpty.hidden = false;
+          els.pivotEmpty.textContent = "Нажмите «Выравнять».";
+          els.btnShuffle.disabled = true;
+        }
+        if (step <= 3) {
+          shuffled = [];
+          lastPickedKey = "";
+          els.shufflePanel.hidden = true;
+          els.shuffleEmpty.hidden = false;
+          els.shuffleEmpty.textContent =
+            step <= 2
+              ? "Список появится после выравнивания и перемешивания."
+              : "Нажмите «Перемешать».";
+          els.btnPick.disabled = true;
+        }
+        if (step <= 4) {
+          stopPickSequence();
+          els.pickCard.hidden = true;
+          els.countdown.hidden = true;
+          els.pickEmpty.hidden = false;
+          els.pickEmpty.textContent =
+            step <= 3
+              ? "Сначала получите итоговый список."
+              : "Нажмите «Выбрать случайную книгу».";
+        }
+      }
+
+      function showSource() {
+        const headers = ["№", "Название", "Автор", "Жанр", "Сложность", "Кто добавил книгу (имя)"];
+        const rows = books.map((b, i) => [
+          b.num || String(i + 1),
+          b.title,
+          b.author,
+          b.genre,
+          b.difficulty,
+          b.addedBy,
+        ]);
+        renderTable(els.sourceTable, headers, rows);
+        const people = new Set(books.map((b) => b.addedBy));
+        els.sourceMeta.textContent =
+          `Книг: ${books.length} · Участников: ${people.size}`;
+        els.sourcePanel.hidden = false;
+        els.sourceEmpty.hidden = true;
+        els.btnPivot.disabled = false;
+        resetDownstreamFrom(2);
+        els.uploadStatus.textContent = "";
+      }
+
+      function buildPivot() {
+        const byPerson = new Map();
+        for (const book of books) {
+          if (!byPerson.has(book.addedBy)) byPerson.set(book.addedBy, []);
+          byPerson.get(book.addedBy).push({ ...book });
+        }
+
+        const people = [...byPerson.keys()].sort((a, b) =>
+          a.localeCompare(b, "ru", { sensitivity: "base" })
+        );
+        const maxLen = Math.max(...people.map((p) => byPerson.get(p).length), 0);
+        const rows = [];
+
+        for (let i = 0; i < maxLen; i++) {
+          const row = people.map((person) => {
+            const list = byPerson.get(person);
+            const source = list[i % list.length];
+            const isDuplicate = i >= list.length;
+            return {
+              title: source.title,
+              addedBy: person,
+              author: source.author,
+              genre: source.genre,
+              difficulty: source.difficulty,
+              isDuplicate,
+            };
+          });
+          rows.push(row);
+        }
+
+        pivot = { people, rows };
+      }
+
+      function showPivot() {
+        const headers = pivot.people;
+        const tableRows = pivot.rows.map((row) =>
+          row.map((cellValue) => ({
+            html: escapeHtml(cellValue.title),
+            className: cellValue.isDuplicate ? "dup" : "",
+          }))
+        );
+        renderTable(els.pivotTable, headers, tableRows, { equalColumns: true });
+
+        const originalCounts = pivot.people
+          .map((p) => {
+            const originals = books.filter((b) => b.addedBy === p).length;
+            return `${p}: ${originals} → ${pivot.rows.length}`;
+          })
+          .join(" · ");
+        els.pivotMeta.textContent =
+          `Строк (максимум): ${pivot.rows.length} · ${originalCounts}`;
+
+        els.pivotPanel.hidden = false;
+        els.pivotEmpty.hidden = true;
+        els.btnShuffle.disabled = false;
+        resetDownstreamFrom(3);
+      }
+
+      function fisherYates(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = secureRandomInt(i + 1);
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+
+      function buildShuffled() {
+        const flat = [];
+        for (const row of pivot.rows) {
+          for (const cellValue of row) {
+            flat.push({
+              title: cellValue.title,
+              addedBy: cellValue.addedBy,
+              author: cellValue.author,
+              genre: cellValue.genre,
+              difficulty: cellValue.difficulty,
+            });
+          }
+        }
+        shuffled = fisherYates(flat);
+        lastPickedKey = "";
+      }
+
+      function showShuffled() {
+        const headers = ["№", "Название", "Кто добавил книгу (имя)"];
+        const rows = shuffled.map((item, i) => [String(i + 1), item.title, item.addedBy]);
+        renderTable(els.shuffleTable, headers, rows);
+        els.shuffleMeta.textContent = `Записей в итоговом списке: ${shuffled.length}`;
+        els.shufflePanel.hidden = false;
+        els.shuffleEmpty.hidden = true;
+        els.btnPick.disabled = false;
+        resetDownstreamFrom(4);
+      }
+
+      function clearPickTimers() {
+        for (const id of pickTimers) clearTimeout(id);
+        pickTimers = [];
+        if (spinTimer) {
+          clearInterval(spinTimer);
+          spinTimer = null;
+        }
+      }
+
+      function stopPickSequence() {
+        clearPickTimers();
+        pickRunning = false;
+        els.btnPick.disabled = !shuffled.length;
+        els.btnPick.textContent = "Выбрать случайную книгу";
+        els.countdown.classList.remove("is-go");
+      }
+
+      function bookKey(item) {
+        return `${item.title}\u0000${item.addedBy}`;
+      }
+
+      function secureRandomInt(maxExclusive) {
+        if (maxExclusive <= 1) return 0;
+        if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+          const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+          const buf = new Uint32Array(1);
+          let x;
+          do {
+            window.crypto.getRandomValues(buf);
+            x = buf[0];
+          } while (x >= limit);
+          return x % maxExclusive;
+        }
+        return Math.floor(Math.random() * maxExclusive);
+      }
+
+      function pickFromList(excludeKey) {
+        let pool = shuffled;
+        if (excludeKey) {
+          const filtered = shuffled.filter((item) => bookKey(item) !== excludeKey);
+          if (filtered.length) pool = filtered;
+        }
+        return pool[secureRandomInt(pool.length)];
+      }
+
+      function showCountdownDigit(value) {
+        els.countdown.classList.toggle("is-go", value === "Готово");
+        els.countdownNumber.textContent = value;
+        els.countdownNumber.style.animation = "none";
+        void els.countdownNumber.offsetWidth;
+        els.countdownNumber.style.animation = "";
+      }
+
+      function startTitleSpin() {
+        if (!shuffled.length) return;
+        const tick = () => {
+          const item = shuffled[secureRandomInt(shuffled.length)];
+          els.countdownSpin.textContent = item.title;
+          els.countdownSpin.classList.add("is-blur");
+          requestAnimationFrame(() => {
+            els.countdownSpin.classList.remove("is-blur");
+          });
+        };
+        tick();
+        spinTimer = setInterval(tick, 90);
+      }
+
+      function revealBook(item) {
+        clearPickTimers();
+        els.countdown.hidden = true;
+        els.countdown.classList.remove("is-go");
+        els.countdownSpin.textContent = "";
+
+        lastPickedKey = bookKey(item);
+        els.pickTitle.textContent = item.title;
+        els.pickAuthor.textContent = item.author || "—";
+        els.pickGenre.textContent = item.genre || "—";
+        els.pickDifficulty.textContent = item.difficulty || "—";
+        els.pickAddedBy.textContent = item.addedBy || "—";
+
+        els.pickCard.hidden = false;
+        els.pickEmpty.hidden = true;
+        els.pickCard.classList.remove("is-animating", "is-revealing");
+        void els.pickCard.offsetWidth;
+        els.pickCard.classList.add("is-animating", "is-revealing");
+        els.pickCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        pickRunning = false;
+        els.btnPick.disabled = false;
+        els.btnPick.textContent = "Выбрать ещё раз";
+      }
+
+      function pickRandom() {
+        if (!shuffled.length || pickRunning) return;
+
+        pickRunning = true;
+        els.btnPick.disabled = true;
+        els.btnPick.textContent = "Идёт выбор…";
+
+        els.pickCard.hidden = true;
+        els.pickEmpty.hidden = true;
+        els.countdown.hidden = false;
+        els.countdownCaption.textContent = "Выбираем книгу";
+        els.countdown.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        clearPickTimers();
+        startTitleSpin();
+
+        const beats = [
+          { at: 0, digit: "3", caption: "Выбираем книгу" },
+          { at: 900, digit: "2", caption: "Ещё чуть-чуть" },
+          { at: 1800, digit: "1", caption: "Почти готово" },
+          { at: 2700, digit: "Готово", caption: "Книга выбрана" },
+        ];
+
+        for (const beat of beats) {
+          pickTimers.push(
+            setTimeout(() => {
+              els.countdownCaption.textContent = beat.caption;
+              showCountdownDigit(beat.digit);
+            }, beat.at)
+          );
+        }
+
+        pickTimers.push(
+          setTimeout(() => {
+            // Выбор в конце отсчёта; предыдущий результат не повторяем подряд
+            const chosen = pickFromList(lastPickedKey);
+            revealBook(chosen);
+          }, 3400)
+        );
+      }
+
+      function readWorkbook(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("Не удалось прочитать файл."));
+          const isCsv = /\.csv$/i.test(file.name) || /csv/i.test(file.type);
+          reader.onload = () => {
+            try {
+              if (isCsv) {
+                resolve(XLSX.read(reader.result, { type: "string", FS: ";" }));
+              } else {
+                resolve(XLSX.read(reader.result, { type: "array" }));
+              }
+            } catch (err) {
+              reject(err);
+            }
+          };
+          if (isCsv) reader.readAsText(file);
+          else reader.readAsArrayBuffer(file);
+        });
+      }
+
+      els.btnUpload.addEventListener("click", () => els.fileInput.click());
+
+      els.fileInput.addEventListener("change", async () => {
+        const file = els.fileInput.files && els.fileInput.files[0];
+        if (!file) return;
+        els.uploadStatus.textContent = "Читаю файл…";
+        try {
+          if (typeof XLSX === "undefined") {
+            throw new Error("Библиотека Excel не загрузилась. Проверьте папку vendor/.");
+          }
+          let workbook = await readWorkbook(file);
+          // CSV from Excel (RU) often uses ';'; retry with comma if one empty column set
+          if (/\.csv$/i.test(file.name) && workbook.SheetNames.length) {
+            const preview = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+              header: 1,
+              defval: "",
+            });
+            const header = preview[0] || [];
+            if (header.length === 1 && String(header[0]).includes(",")) {
+              const text = await new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = () => reject(new Error("Не удалось прочитать файл."));
+                r.readAsText(file);
+              });
+              workbook = XLSX.read(text, { type: "string", FS: "," });
+            }
+          }
+          books = parseSheet(workbook);
+          showSource();
+          document.getElementById("step-pivot").scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        } catch (err) {
+          books = [];
+          els.btnPivot.disabled = true;
+          resetDownstreamFrom(2);
+          els.sourcePanel.hidden = true;
+          els.sourceEmpty.hidden = false;
+          els.sourceEmpty.textContent = "Таблица появится здесь после загрузки файла.";
+          els.uploadStatus.textContent = err.message || "Ошибка загрузки.";
+        } finally {
+          els.fileInput.value = "";
+        }
+      });
+
+      els.btnPivot.addEventListener("click", () => {
+        if (!books.length) return;
+        buildPivot();
+        showPivot();
+        document.getElementById("step-shuffle").scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+
+      els.btnShuffle.addEventListener("click", () => {
+        if (!pivot) return;
+        buildShuffled();
+        showShuffled();
+        document.getElementById("step-pick").scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+
+      els.btnPick.addEventListener("click", pickRandom);
+    })();
+  </script>
+</body>
+</html>
